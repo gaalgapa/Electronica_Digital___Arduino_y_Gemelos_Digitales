@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Gráficas de Sensores</title>
+    <script src="https://www.gstatic.com/charts/loader.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      .chart {
+        margin-bottom: 30px;
+      }
+      #update-info {
+        font-size: 16px;
+        margin-bottom: 15px;
+      }
+      button {
+        padding: 8px 16px;
+        font-size: 14px;
+        margin-bottom: 20px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Gráficas de Sensores</h1>
+    <div id="update-info">Última actualización: --</div>
+    <button onclick="drawCharts()">Actualizar Ahora</button>
+
+    <div id="chart1" class="chart"></div>
+    <div id="chart2" class="chart"></div>
+    <div id="chart3" class="chart"></div>
+    <div id="chart4" class="chart"></div>
+    <div id="chart5" class="chart"></div>
+    <div id="chart6" class="chart"></div>
+    <div id="chart7" class="chart"></div>
+    <div id="chart8" class="chart"></div>
+    <div id="chart9" class="chart"></div>
+    <div id="chart10" class="chart"></div>
+    <div id="chart11" class="chart"></div>
+    <div id="chart12" class="chart"></div>
+
+    <script>
+      google.charts.load("current", { packages: ["corechart"] });
+      google.charts.setOnLoadCallback(() => {
+        drawCharts();
+        setInterval(drawCharts, 10000); // Cada 10 segundos
+      });
+
+      function drawCharts() {
+        const url =
+          "https://docs.google.com/spreadsheets/d/1i32wB41NCBVoR0JhTGvFezNfYrQ6c4tNQvHgHIYR5lg/gviz/tq?sheet=Hoja1&tq=" +
+          encodeURIComponent("SELECT B, C, D, E, F, G, H, I, J, K, L");
+
+        fetch(url)
+          .then((res) => res.text())
+          .then((rep) => {
+            const json = JSON.parse(rep.substr(47).slice(0, -2));
+            const rows = json.table.rows;
+
+            const tiempos = [];
+            const sensores = Array.from({ length: 10 }, () => []);
+
+            rows.forEach((row) => {
+              const tiempo = parseFloat(row.c[0]?.v);
+              if (!isNaN(tiempo)) {
+                tiempos.push(tiempo);
+                for (let i = 0; i < 10; i++) {
+                  const val = row.c[i + 1]?.v;
+                  sensores[i].push([tiempo, val !== null ? parseFloat(val) : null]);
+                }
+              }
+            });
+
+            // Gráfico 1: Temperatura vs Tiempo (todos los sensores)
+            const data1 = new google.visualization.DataTable();
+            data1.addColumn("number", "Tiempo (s)");
+            for (let i = 0; i < 10; i++) {
+              data1.addColumn("number", `Sensor ${i + 1}`);
+            }
+            for (let j = 0; j < tiempos.length; j++) {
+              const fila = [tiempos[j]];
+              for (let i = 0; i < 10; i++) {
+                fila.push(sensores[i][j]?.[1] ?? null);
+              }
+              data1.addRow(fila);
+            }
+            drawChart(data1, "chart1", "Perfil de Temperaturas vs Tiempo");
+
+            // Gráfico 2: Perfil instantáneo
+            const ultimaLectura = sensores.map((s, i) => {
+              const val = s[s.length - 1]?.[1];
+              return [i + 1, val !== null ? val : null];
+            });
+            const data2 = new google.visualization.DataTable();
+            data2.addColumn("number", "Sensor");
+            data2.addColumn("number", "Temperatura");
+            ultimaLectura.forEach((par) => data2.addRow(par));
+            drawChart(
+              data2,
+              "chart2",
+              "Perfil Instantáneo de Temperatura",
+              "scatter"
+            );
+
+            // Gráficos 3 a 12: Uno por sensor
+            for (let i = 0; i < 10; i++) {
+              const data = new google.visualization.DataTable();
+              data.addColumn("number", "Tiempo (s)");
+              data.addColumn("number", `Sensor ${i + 1}`);
+              sensores[i].forEach(([t, v]) => data.addRow([t, v]));
+              drawChart(data, `chart${i + 3}`, `Sensor ${i + 1} vs Tiempo`);
+            }
+
+            // Actualizar timestamp
+            const now = new Date();
+            const formatted = now.toLocaleTimeString("es-CO", {
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+            });
+            document.getElementById("update-info").innerText =
+              "Última actualización: " + formatted;
+          });
+      }
+
+      function drawChart(data, elementId, title, type = "line") {
+        const options = {
+          title: title,
+          height: 300,
+          legend: { position: "bottom" },
+          hAxis: {
+            title: data.getColumnLabel(0),
+            textStyle: { fontSize: 14 },
+            titleTextStyle: { fontSize: 16 },
+          },
+          vAxis: {
+            title: data.getColumnLabel(1),
+            textStyle: { fontSize: 14 },
+            titleTextStyle: { fontSize: 16 },
+          },
+        };
+        const chart =
+          type === "scatter"
+            ? new google.visualization.ScatterChart(
+                document.getElementById(elementId)
+              )
+            : new google.visualization.LineChart(
+                document.getElementById(elementId)
+              );
+        chart.draw(data, options);
+      }
+    </script>
+  </body>
+</html>
