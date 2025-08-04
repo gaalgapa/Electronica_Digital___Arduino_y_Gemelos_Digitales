@@ -1,0 +1,16 @@
+function doGet(e) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheets()[0];
+
+  var tiempo = e.parameter.tiempo || "0";
+  var sensores = [];
+
+  for (var i = 1; i <= 10; i++) {
+    sensores.push(e.parameter["s" + i] || "NaN");
+  }
+
+  var fila = [new Date(), tiempo, ...sensores];
+  sheet.appendRow(fila);
+
+  return ContentService.createTextOutput("Datos guardados.");
+}
